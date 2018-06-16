@@ -21,7 +21,7 @@ from openfermion.ops import FermionOperator, QubitOperator
 from openfermion.utils import up_index, down_index
 
 
-def uccsd_generator(single_amplitudes, double_amplitudes, anti_hermitian=True):
+def uccsd_generator(single_amplitudes, double_amplitudes, anti_hermitian=True, symmetric=False):
     """Create a fermionic operator that is the generator of uccsd.
 
     This a the most straight-forward method to generate UCCSD operators,
@@ -65,6 +65,17 @@ def uccsd_generator(single_amplitudes, double_amplitudes, anti_hermitian=True):
         generator += FermionOperator(((i, 1), (j, 0)), t_ij)
         if anti_hermitian:
             generator += FermionOperator(((j, 1), (i, 0)), -t_ij)
+        #   (p,q) = (q,q)
+        """
+        if symmetric:
+            generator += FermionOperator(((j, 1), (i, 0)), t_ij)
+            if anti_hermitian:
+                generator += FermionOperator(((i, 1), (j, 0)), -t_ij)
+        """
+        if symmetric:
+            generator += FermionOperator(((i+1, 1), (j+1, 0)), t_ij)
+            if anti_hermitian:
+                generator += FermionOperator(((j+1, 1), (i+1, 0)), -t_ij)
 
     # Add double excitations
     for (i, j, k, l), t_ijkl in double_amplitudes:
@@ -74,6 +85,46 @@ def uccsd_generator(single_amplitudes, double_amplitudes, anti_hermitian=True):
         if anti_hermitian:
             generator += FermionOperator(
                 ((l, 1), (k, 0), (j, 1), (i, 0)), -t_ijkl)
+
+        # 
+        if symmetric:
+            #same spin: both p and r alpha
+            if (i % 2 == 0) and (k % 2 == 0) :
+                generator += FermionOperator(
+                    ((i+1, 1), (j+1, 0), (k+1, 1), (l+1, 0)), t_ijkl)
+                #generator += FermionOperator(
+                #    ((k+1, 1), (l+1, 0), (i+1, 1), (j+1, 0)), t_ijkl)
+                if anti_hermitian:
+                    generator += FermionOperator(
+                        ((l+1, 1), (k+1, 0), (j+1, 1), (i+1, 0)), -t_ijkl)
+                #    generator += FermionOperator(
+                #        ((j+1, 1), (i+1, 0), (l+1, 1), (k+1, 0)), -t_ijkl)
+
+            #oppose spin:p alpha r beta
+            elif (i % 2 == 0) and (k % 2 == 1) :
+                if (i>k):
+                    #print(" Why are we here? For symmetric=True: only feed me ijkl with i<k")
+                    #exit(-1)
+                    pass
+                generator += FermionOperator(
+                    ((i+1, 1), (j+1, 0), (k-1, 1), (l-1, 0)), t_ijkl)
+                #generator += FermionOperator(
+                #    ((k-1, 1), (l-1, 0), (i+1, 1), (j+1, 0)), t_ijkl)
+                if anti_hermitian:
+                    generator += FermionOperator(
+                        ((l-1, 1), (k-1, 0), (j+1, 1), (i+1, 0)), -t_ijkl)
+                #    generator += FermionOperator(
+                #        ((j+1, 1), (i+1, 0), (l-1, 1), (k-1, 0)), -t_ijkl)
+            #same spin: both p and r beta
+            elif (i % 2 == 1) and (k % 2 == 1) :
+                print(" Why are we here? For symmetric=True: only feed me alpha-alpha, alpha-beta terms")
+                exit(-1)
+            #oppose spin:p beta r alpha
+            elif (i % 2 == 1) and (k % 2 == 0) :
+                print(" Why are we here? For symmetric=True: only feed me alpha-alpha, alpha-beta terms")
+                exit(-1)
+        
+        #print FermionOperator(((i, 1), (j, 0), (k, 1), (l, 0)), t_ijkl)
 
     return generator
 
